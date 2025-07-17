@@ -14,6 +14,7 @@ int main(int argc, char** argv) {
 		fgets(input, 2048, stdin);
 
 		printf("%s", input);
+		
 	}
 	
 
