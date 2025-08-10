@@ -95,22 +95,28 @@ lval evaluate_op(lval x, char* op, lval y) {
 	if (strcmp(op, "+") == 0) { return lval_num(x.num + y.num); }
 	if (strcmp(op, "-") == 0) { return lval_num(x.num - y.num); }
 	if (strcmp(op, "*") == 0) { return lval_num(x.num * y.num); }
-	if (strcmp(op, "/") == 0) { return lval_num(x.num / y.num); }
+	if (strcmp(op, "/") == 0) {
+		return y.num == 0
+		? lval_err(LERR_DIV_ZERO)
+		: lval_num(x.num / y.num);
+	}
 	if (strcmp(op, "%") == 0) { return lval_num(x.num % y.num); }
 	if (strcmp(op, "^") == 0) { return lval_num(power(x.num, y.num)); }
-	return 0;
+	return lval_err(LERR_BAD_OP);
 }
 
 
 
-long evaluate(mpc_ast_t* t) {
+lval evaluate(mpc_ast_t* t) {
 	if (strstr(t->tag, "number")) {
-		return atoi(t->contents);
+		errno = 0;
+		long x = strtol(t->contents, NULL, 10);
+		return errno !=  ERANGE ? lval_num(x) : lval_err(LERR_BAD_NUM);
 	}
 	
 	char* op = t->children[1]->contents;
 
-	long x = evaluate(t->children[2]);
+	lval x = evaluate(t->children[2]);
 
 	int i = 3;
 	while (strstr(t->children[i]->tag, "expr")) {
@@ -165,9 +171,10 @@ int main(int argc, char** argv) {
 		mpc_result_t r;
 		if (mpc_parse("<stdin>", input, Lispy, &r)) {
 			long leaves = count_leaves(r.output);
-			printf("number of leaves:\t%li\n", leaves);
-			long result = evaluate(r.output);
-			printf("result:\t%li\n", result);
+			printf("number of leaves: %li\n", leaves);
+			lval result = evaluate(r.output);
+			printf("result: ");
+			lval_println(result);
 			mpc_ast_delete(r.output);
 		}
 		else {
